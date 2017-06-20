@@ -48,20 +48,21 @@ class chatbot(telepot.helper.ChatHandler):
 			self._add_shopping(msg)
 		elif msg['text']=='/list':
 			self._show_shopping(msg)
-		elif msg['text'].split()[0] == '/done':
+		elif msg['text'] == '/done':
 			self._done_shopping(msg)	
 		
 	def on_callback_query(self,msg):
 		query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')	
-	 	chat_id = msg['message']['chat']['id']	
-		#items = self.db.get_items(chat_id)		
+	 	chat_id = msg['message']['chat']['id']			
 		# without following line encoding problems will stop us from finding non-ascii items
 		# TODO extract Redis code in its own class, do this everywhere, sort items
 		items = map(lambda x: x.decode('utf8'), self.redis.smembers(self.redis_key))
 		if query_data in items:
-			#self.db.delete_item(query_data,self.chat_id)
+			buyer = msg['from']['first_name']
 			self.redis.srem(self.redis_key, query_data)
-			self.sender.sendMessage('Thanks for buying: ' + query_data)
+			self.sender.sendMessage('Thanks '+ buyer +', for buying: ' + query_data)
+			self.bot.answerCallbackQuery(query_id,text='Thanks')
+
 		else:
 			self.bot.answerCallbackQuery(query_id, text=query_data + ', already bought!', show_alert=True)
 
@@ -72,8 +73,6 @@ class chatbot(telepot.helper.ChatHandler):
 	def on__idle(self, event):	
 		print('on Idle')
 
-
-
 	def _cursefunc(self):
 		 self.sender.sendMessage(self.secure_random.choice(self.curses))
 	def _add_shopping(self, msg):
@@ -81,23 +80,24 @@ class chatbot(telepot.helper.ChatHandler):
 		items = [x.strip() for x in  msg['text'][4:].split(',')]
 		self.sender.sendMessage('add to Shopping List: ' + ', '.join(items))			
 		for item in items:	
-			#self.db.add_item(item,chat_id)
 			if len(item) > 0:
 				self.redis.sadd(self.redis_key, item)
 	
 	def _show_shopping(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)
-		#items = self.db.get_items(chat_id)
 		items = self.redis.smembers(self.redis_key)
 		self.sender.sendMessage('In Shopping List: ' + ', '.join(items))
 
 	def _done_shopping(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)	
-		#items = self.db.get_items(chat_id)
 		items = self.redis.smembers(self.redis_key)
-		keyboard = self._build_keyboard(items)      	
-		global message_with_inline_keyboard 
-		message_with_inline_keyboard = bot.sendMessage(chat_id, "Select an item to delete", reply_markup=keyboard)
+		
+		if len(items) > 0:
+			keyboard = self._build_keyboard(items)      	
+			global message_with_inline_keyboard 
+			message_with_inline_keyboard = bot.sendMessage(chat_id, "Select an item to delete", reply_markup=keyboard)
+		else:
+			bot.sendMessage(chat_id,"there is nothing in the List that you could have bought!")
 
 	def _build_keyboard(self,items):
 		mark_up=[] 
@@ -119,10 +119,6 @@ class chatbot(telepot.helper.ChatHandler):
 		self.redis.publish('chat', json.dumps(payload))
 
 TOKEN = '398531640:AAHx75eeW3GJJBw0NG37xxGUj4nBfWsESPA'
-
-#bot = telepot.DelegatorBot(TOKEN, [
- #   include_callback_query_chat_id(pave_event_space())(per_chat_id(types=['group']), create_open, chatbot,timeout = 10),
-#])
 
 bot = telepot.DelegatorBot(TOKEN, [
     include_callback_query_chat_id(

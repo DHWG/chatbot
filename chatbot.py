@@ -26,8 +26,6 @@ class chatbot(telepot.helper.ChatHandler):
 		
 		self.curses = ['dummpiss', 'littleFrenchMan', 'Schlitzi','Kartoffel','Immigrand', 'SchwabenSeggel', 'DU HASHMI', 'NOOB', 'Mettigel', 'u just suck' ]
 		self.secure_random = random.SystemRandom()	
- 		#self.db = DBHelper()
-		#self.db.setup()
 	def on_chat_message(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)
 		if msg['chat']['title'] == 'ZIPUP WG':

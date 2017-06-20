@@ -10,7 +10,6 @@ from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from telepot.delegate import (
     per_chat_id, create_open, pave_event_space, include_callback_query_chat_id)
-from dbhelper import DBHelper
 from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, ForceReply
 import redis
 import json
@@ -22,9 +21,7 @@ class chatbot(telepot.helper.ChatHandler):
     	def __init__(self, *args, **kwargs):
 	       	super(chatbot, self).__init__(*args, **kwargs)
 		self.redis = redis.StrictRedis(host='localhost')
-		self.redis_key = 'shopping_list'
-		
-		self.curses = ['dummpiss', 'littleFrenchMan', 'Schlitzi','Kartoffel','Immigrand', 'SchwabenSeggel', 'DU HASHMI', 'NOOB', 'Mettigel', 'u just suck' ]
+		self.redis_key = 'shopping_list'	
 		self.secure_random = random.SystemRandom()	
 	def on_chat_message(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)
@@ -48,7 +45,10 @@ class chatbot(telepot.helper.ChatHandler):
 			self._show_shopping(msg)
 		elif msg['text'] == '/done':
 			self._done_shopping(msg)	
-		
+		elif msg['text'].split()[0] == '/curseadd':
+			self._curseadd(msg)
+		elif msg['text'].split()[0] == '/curseremove':
+			self._curseremove(msg)			
 	def on_callback_query(self,msg):
 		query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')	
 	 	chat_id = msg['message']['chat']['id']			
@@ -70,9 +70,19 @@ class chatbot(telepot.helper.ChatHandler):
 		pass		
 	def on__idle(self, event):	
 		print('on Idle')
-
-	def _cursefunc(self):
-		 self.sender.sendMessage(self.secure_random.choice(self.curses))
+	def _curseadd(self, msg):
+		curse = msg['text'].split(' ',1)[-1]
+		print(curse)
+		self.redis.rpush("curses", curse)
+	
+	def _curseremove(self, msg):
+		curse = msg['text'].split(' ',1)[-1]
+		print("Remove curse: "+curse)
+		self.redis.lrem("curses", -1, curse)
+	
+	def _cursefunc(self):	 
+		curses = self.redis.lrange("curses",0,-1)
+		self.sender.sendMessage(self.secure_random.choice(curses))
 	def _add_shopping(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)
 		items = [x.strip() for x in  msg['text'][4:].split(',')]

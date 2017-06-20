@@ -12,19 +12,28 @@ from telepot.delegate import (
     per_chat_id, create_open, pave_event_space, include_callback_query_chat_id)
 from dbhelper import DBHelper
 from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, ForceReply
+import redis
+import json
+import re
 
 message_with_inline_keyboard = None
 
 class chatbot(telepot.helper.ChatHandler):
     	def __init__(self, *args, **kwargs):
 	       	super(chatbot, self).__init__(*args, **kwargs)
+		self.redis = redis.StrictRedis(host='localhost')
+		self.redis_key = 'shopping_list'
 		
 		self.curses = ['dummpiss', 'littleFrenchMan', 'Schlitzi','Kartoffel','Immigrand', 'SchwabenSeggel', 'DU HASHMI', 'NOOB', 'Mettigel', 'u just suck' ]
 		self.secure_random = random.SystemRandom()	
- 		self.db = DBHelper()
-		self.db.setup()
+ 		#self.db = DBHelper()
+		#self.db.setup()
 	def on_chat_message(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)
+		if msg['chat']['title'] == 'ZIPUP WG':
+			self._message_to_redis(content_type, msg)
+		if content_type == 'sticker':
+			fileid = msg['sticker']['file_id']
 		if msg['text'] == '/test':
 			 self.sender.sendMessage('works')
 		elif msg['text'] == '/curse':
@@ -45,9 +54,13 @@ class chatbot(telepot.helper.ChatHandler):
 	def on_callback_query(self,msg):
 		query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')	
 	 	chat_id = msg['message']['chat']['id']	
-		items = self.db.get_items(chat_id)		
+		#items = self.db.get_items(chat_id)		
+		# without following line encoding problems will stop us from finding non-ascii items
+		# TODO extract Redis code in its own class, do this everywhere, sort items
+		items = map(lambda x: x.decode('utf8'), self.redis.smembers(self.redis_key))
 		if query_data in items:
-			self.db.delete_item(query_data,self.chat_id)
+			#self.db.delete_item(query_data,self.chat_id)
+			self.redis.srem(self.redis_key, query_data)
 			self.sender.sendMessage('Thanks for buying: ' + query_data)
 		else:
 			self.bot.answerCallbackQuery(query_id, text=query_data + ', already bought!', show_alert=True)
@@ -68,28 +81,42 @@ class chatbot(telepot.helper.ChatHandler):
 		items = [x.strip() for x in  msg['text'][4:].split(',')]
 		self.sender.sendMessage('add to Shopping List: ' + ', '.join(items))			
 		for item in items:	
-			self.db.add_item(item,chat_id)
+			#self.db.add_item(item,chat_id)
+			if len(item) > 0:
+				self.redis.sadd(self.redis_key, item)
 	
 	def _show_shopping(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)
-		items = self.db.get_items(chat_id)
+		#items = self.db.get_items(chat_id)
+		items = self.redis.smembers(self.redis_key)
 		self.sender.sendMessage('In Shopping List: ' + ', '.join(items))
 
 	def _done_shopping(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)	
-		items = self.db.get_items(chat_id)
+		#items = self.db.get_items(chat_id)
+		items = self.redis.smembers(self.redis_key)
 		keyboard = self._build_keyboard(items)      	
 		global message_with_inline_keyboard 
 		message_with_inline_keyboard = bot.sendMessage(chat_id, "Select an item to delete", reply_markup=keyboard)
 
 	def _build_keyboard(self,items):
 		mark_up=[] 
-		for i in range(len(items)):
-			button = InlineKeyboardButton(text=items[i], callback_data=items[i])
+		for item in items:
+			button = InlineKeyboardButton(text=item, callback_data=item)
 			new = []
 			new.append(button)
 			mark_up.append(new)		
 		return  InlineKeyboardMarkup(inline_keyboard=mark_up)	
+
+	def _message_to_redis(self, content_type, msg):
+		def initials(first, last):
+			return first[0] + last[0]
+		print msg
+		payload = {
+			'text': msg['text'] if content_type == 'text' else '[Sent a {}].'.format(content_type),
+			'name': initials(msg['from'].get('first_name', ' '), msg['from'].get('last_name', ' '))
+		}
+		self.redis.publish('chat', json.dumps(payload))
 
 TOKEN = '398531640:AAHx75eeW3GJJBw0NG37xxGUj4nBfWsESPA'
 

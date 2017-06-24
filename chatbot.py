@@ -1,4 +1,5 @@
 import sys
+import thread
 import time
 import random
 import subprocess
@@ -17,16 +18,21 @@ import re
 
 message_with_inline_keyboard = None
 
+hashmimode = False
+
 class chatbot(telepot.helper.ChatHandler):
     	def __init__(self, *args, **kwargs):
 	       	super(chatbot, self).__init__(*args, **kwargs)
 		self.redis = redis.StrictRedis(host='localhost')
-		self.redis_key = 'shopping_list'	
+		self.redis_key = 'shopping_list'
 		self.secure_random = random.SystemRandom()	
 	def on_chat_message(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)
-		if msg['chat']['title'] == 'ZIPUP WG':
-			self._message_to_redis(content_type, msg)
+		
+		if msg['chat']['type'] == 'group':
+			if msg['chat']['title'] == 'ZIPUP WG':
+				if not chatbot.hashmimode:
+					self._message_to_redis(content_type, msg)
 		if content_type == 'sticker':
 			fileid = msg['sticker']['file_id']
 		if msg['text'] == '/test':
@@ -49,6 +55,12 @@ class chatbot(telepot.helper.ChatHandler):
 			self._curseadd(msg)
 		elif msg['text'].split()[0] == '/curseremove':
 			self._curseremove(msg)			
+		elif msg['text'] == '/hashmimode':
+			chatbot.hashmimode = True	
+			thread.start_new_thread(self._hashmifunc, ())
+		elif msg['text'] == '/normalmode':
+			chatbot.hashmimode = False
+
 	def on_callback_query(self,msg):
 		query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')	
 	 	chat_id = msg['message']['chat']['id']			
@@ -126,13 +138,27 @@ class chatbot(telepot.helper.ChatHandler):
 		}
 		self.redis.publish('chat', json.dumps(payload))
 
+	def _hashmifunc(self):
+		
+		payload = {
+                        'text': 'I love this WG and its Landlord its great',
+                        'name': 'TC'
+                }
+		sent_messages = 0
+		while chatbot.hashmimode:
+	                self.redis.publish('chat', json.dumps(payload))
+			sent_messages += 1
+			if sent_messages >= 20:
+				time.sleep(20)
+
 TOKEN = '398531640:AAHx75eeW3GJJBw0NG37xxGUj4nBfWsESPA'
+
+chatbot.hashmimode = False
 
 bot = telepot.DelegatorBot(TOKEN, [
     include_callback_query_chat_id(
-        pave_event_space())(
-            per_chat_id(types=['group']), create_open,chatbot , timeout=10),
-])
+       # pave_event_space())( per_chat_id(types=['group']), create_open,chatbot , timeout=10),])
+        pave_event_space())(per_chat_id(), create_open,chatbot , timeout=10),])
 
 MessageLoop(bot).run_as_thread()
 print('Listening ...')

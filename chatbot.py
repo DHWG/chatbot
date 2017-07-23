@@ -21,6 +21,7 @@ message_with_inline_keyboard = None
 hashmimode = False
 
 class chatbot(telepot.helper.ChatHandler):
+	global hashmimode
     	def __init__(self, *args, **kwargs):
 	       	super(chatbot, self).__init__(*args, **kwargs)
 		self.redis = redis.StrictRedis(host='localhost')
@@ -28,9 +29,9 @@ class chatbot(telepot.helper.ChatHandler):
 		self.secure_random = random.SystemRandom()	
 	def on_chat_message(self, msg):
 		content_type, chat_type, chat_id = telepot.glance(msg)
-		
+		print(msg)	
 		if msg['chat']['type'] == 'group':
-			if msg['chat']['title'] == 'ZIPUP WG':
+			if msg['chat']['id'] == -160834945:
 				if not chatbot.hashmimode:
 					self._message_to_redis(content_type, msg)
 		if content_type == 'sticker':
@@ -60,7 +61,9 @@ class chatbot(telepot.helper.ChatHandler):
 			thread.start_new_thread(self._hashmifunc, ())
 		elif msg['text'] == '/normalmode':
 			chatbot.hashmimode = False
-
+			msg['text'] = 'normalmode enabled'
+			self._message_to_redis(content_type,msg)
+			self.sender.sendMessage('normalmode enabled')
 	def on_callback_query(self,msg):
 		query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')	
 	 	chat_id = msg['message']['chat']['id']			
@@ -139,14 +142,20 @@ class chatbot(telepot.helper.ChatHandler):
 		self.redis.publish('chat', json.dumps(payload))
 
 	def _hashmifunc(self):
-		
-		payload = {
-                        'text': 'I love this WG and its Landlord its great',
-                        'name': 'TC'
-                }
+		global hashmimode
+		payloadlist = []
+		texts = [('I love this WG!', 'TC'), ('No Popcorntime!', 'YS'), ('Thanks for cleaning :)', 'JJ'), ('Our Landlord is the best!!!','KL'), ('I cleaned the kitchen that was fun!', 'QN'), ('I go to bed early today', 'AD'), ('Best place to study', 'NB'),('This Place is better than Paris!!!<3','AC'), ('Are u fucking kidding me?!','GB')]		
+		for text in texts:
+			payload={}
+			payload['text'] = text[0]
+			payload['name'] = text[1]
+			payloadlist.append(payload)
+
+		print(texts)					
 		sent_messages = 0
 		while chatbot.hashmimode:
-	                self.redis.publish('chat', json.dumps(payload))
+	                self.redis.publish('chat', json.dumps(self.secure_random.choice(payloadlist)))
+			print(random.choice(payloadlist))			
 			sent_messages += 1
 			if sent_messages >= 20:
 				time.sleep(20)

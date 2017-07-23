@@ -64,6 +64,8 @@ class chatbot(telepot.helper.ChatHandler):
 			msg['text'] = 'normalmode enabled'
 			self._message_to_redis(content_type,msg)
 			self.sender.sendMessage('normalmode enabled')
+		elif msg['text'].split()[0] == '/addhashmi':
+			self._addhashmi(msg)
 	def on_callback_query(self,msg):
 		query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')	
 	 	chat_id = msg['message']['chat']['id']			
@@ -89,7 +91,7 @@ class chatbot(telepot.helper.ChatHandler):
 		curse = msg['text'].split(' ',1)[-1]
 		print(curse)
 		self.redis.rpush("curses", curse)
-	
+		
 	def _curseremove(self, msg):
 		curse = msg['text'].split(' ',1)[-1]
 		print("Remove curse: "+curse)
@@ -140,8 +142,21 @@ class chatbot(telepot.helper.ChatHandler):
 			'name': initials(msg['from'].get('first_name', ' '), msg['from'].get('last_name', ' '))
 		}
 		self.redis.publish('chat', json.dumps(payload))
+	
+	def _addhashmi(self,msg):
+		textarray = msg['text'].split(' ')
+		if len(textarray[1]) != 2:
+			return 
+		initials = textarray[1]
+		text = ' '.join(textarray[2:])
+		payload = (text, initials)
+
+                self.redis.rpush("hashmitext", json.dumps(payload))
+	
 
 	def _hashmifunc(self):
+		hashmitext = self.redis.lrange("hashmitext",0,-1)
+		print(hashmitext)
 		global hashmimode
 		payloadlist = []
 		texts = [('I love this WG!', 'TC'), ('No Popcorntime!', 'YS'), ('Thanks for cleaning :)', 'JJ'), ('Our Landlord is the best!!!','KL'), ('I cleaned the kitchen that was fun!', 'QN'), ('I go to bed early today', 'AD'), ('Best place to study', 'NB'),('This Place is better than Paris!!!<3','AC'), ('Are u fucking kidding me?!','GB')]		

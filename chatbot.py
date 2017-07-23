@@ -156,21 +156,30 @@ class chatbot(telepot.helper.ChatHandler):
 
 	def _hashmifunc(self):
 		hashmitext = self.redis.lrange("hashmitext",0,-1)
-		print(hashmitext)
 		global hashmimode
 		payloadlist = []
 		texts = [('I love this WG!', 'TC'), ('No Popcorntime!', 'YS'), ('Thanks for cleaning :)', 'JJ'), ('Our Landlord is the best!!!','KL'), ('I cleaned the kitchen that was fun!', 'QN'), ('I go to bed early today', 'AD'), ('Best place to study', 'NB'),('This Place is better than Paris!!!<3','AC'), ('Are u fucking kidding me?!','GB')]		
+		texts.extend([tuple(json.loads(x)) for x in hashmitext])
 		for text in texts:
 			payload={}
 			payload['text'] = text[0]
 			payload['name'] = text[1]
 			payloadlist.append(payload)
 
-		print(texts)					
 		sent_messages = 0
+		lasttexts = [] 
 		while chatbot.hashmimode:
-	                self.redis.publish('chat', json.dumps(self.secure_random.choice(payloadlist)))
-			print(random.choice(payloadlist))			
+			text = ''
+			while True:
+				print(lasttexts)
+				if(len(lasttexts)>9):
+					lasttexts.pop(0)
+				text = self.secure_random.choice(payloadlist)
+				if(text not in lasttexts):
+					lasttexts.append(text)
+					break
+				
+	                self.redis.publish('chat', text)
 			sent_messages += 1
 			if sent_messages >= 20:
 				time.sleep(20)

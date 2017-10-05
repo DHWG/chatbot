@@ -12,7 +12,7 @@ Then execute with:
     
     python3.6 main.py
 
-## Adding new comands
+## Adding new commands
 
 1. Add a new `CommandSpec` to `CommandType` in `commands.py`.
 2. Create a class with appropriate logic, e.g. in `modules.py`.

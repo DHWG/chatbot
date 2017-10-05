@@ -30,6 +30,16 @@ class CommandType(Enum):
                                      'Displays the shopping list with inline keyboard to remove items.',
                                      '$cmd',
                                      True)
+    MIRRORCHAT_PRIVACY_ON = CommandSpec('mirror_chat/privacy_on',
+                                        'hashmimode',
+                                        'Replaces chat messages on mirror with random ones.',
+                                        '$cmd',
+                                        True)
+    MIRRORCHAT_PRIVACY_OFF = CommandSpec('mirror_chat/privacy_off',
+                                         'normalmode',
+                                         'Turns off privacy mode.',
+                                         '$cmd',
+                                         True)
 
     def create(self, *arguments):
         return Command(self, arguments)

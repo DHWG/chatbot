@@ -14,10 +14,7 @@ help_module = HelpModule()
 shopping_list = ShoppingListModule()
 mirror_chat = ChatToMirrorModule()
 
-message_handlers = [
-    mirror_chat.on_message
-]
-
+# command handlers receive the specific type of commands they are registered for
 command_handlers = {
     CommandType.HELP: help_module.command_summary,
     CommandType.SHOPPING_LIST_ADD: shopping_list.add,
@@ -28,6 +25,11 @@ command_handlers = {
     CommandType.MIRRORCHAT_PRIVACY_OFF: mirror_chat.privacy_mode_off,
 }
 
+# message handlers are passed all messages that are not commands
+message_handlers = [
+    mirror_chat.on_message
+]
+
 class DHBot(telepot.helper.ChatHandler):
 
     def __init__(self, *args, **kwargs):
@@ -35,6 +37,7 @@ class DHBot(telepot.helper.ChatHandler):
         self._log = logging.getLogger(DHBot.__name__)
 
     def _resolve_command(self, msg_txt):
+        '''Tries to resolve a command from message text, returns None if the message is not a command.'''
         if not msg_txt.startswith('/'):
             return None
 
@@ -51,12 +54,14 @@ class DHBot(telepot.helper.ChatHandler):
             return None
 
     def _dispatch_command(self, command):
+        '''Dispatches a command to the registered handler.'''
         if not command.type in command_handlers:
             self._log.warning('Got command "%s" without registered handler.', command.id)
         self._log.debug('Executing command %s.', command)
         command_handlers.get(command.type)(self, command.id, *command.arguments)
 
     def on_chat_message(self, message):
+        '''Called on regular chat messages.'''
         content_type, chat_type, chat_id = telepot.glance(message)
         if content_type == 'text':
             command = self._resolve_command(message['text'])
@@ -67,6 +72,7 @@ class DHBot(telepot.helper.ChatHandler):
             handler(self, content_type, message)
 
     def on_callback_query(self, message):
+        '''Called on callbacks, e.g. from inline keyboards.'''
         query_id, from_id, query_data = telepot.glance(message, flavor='callback_query')
 
         command = Command.from_json(query_data)
@@ -74,6 +80,7 @@ class DHBot(telepot.helper.ChatHandler):
             self._dispatch_command(command)
 
     def send_inline_command_selector(self, message, options):
+        '''Sends an inline keyboard where each button represents a command instance.'''
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=label, callback_data=command.json)] for (label, command) in options
         ])

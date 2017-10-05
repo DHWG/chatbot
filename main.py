@@ -8,11 +8,13 @@ from telepot.delegate import (
     per_chat_id, create_open, pave_event_space, include_callback_query_chat_id)
 import config
 from commands import CommandType, Command
-from modules import ShoppingListModule
+from modules import HelpModule, ShoppingListModule
 
+help_module = HelpModule()
 shopping_list = ShoppingListModule()
 
 handlers = {
+    CommandType.HELP: help_module.command_summary,
     CommandType.SHOPPING_LIST_ADD: shopping_list.add,
     CommandType.SHOPPING_LIST_REMOVE: shopping_list.remove,
     CommandType.SHOPPING_LIST_SHOW: shopping_list.list,

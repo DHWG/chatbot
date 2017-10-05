@@ -5,6 +5,11 @@ import json
 CommandSpec = namedtuple('CommandSpec', ['id', 'short', 'description', 'usage', 'listed'])
 
 class CommandType(Enum):
+    HELP = CommandSpec('help/summary',
+                       'help',
+                       'Describes all available commands.',
+                       '$cmd',
+                       True)
     SHOPPING_LIST_ADD = CommandSpec('shopping_list/add',
                                     'add',
                                     'Adds something to the shopping list.',
@@ -22,7 +27,7 @@ class CommandType(Enum):
                                      True)
     SHOPPING_LIST_DONE = CommandSpec('shopping_list/done',
                                      'done',
-                                     'Displays the shopping list with option to remove items.',
+                                     'Displays the shopping list with inline keyboard to remove items.',
                                      '$cmd',
                                      True)
 

@@ -1,6 +1,22 @@
 import logging
 from commands import CommandType, Command
 
+class HelpModule():
+
+    def __init__(self):
+        self._log = logging.getLogger(ShoppingListModule.__name__)
+
+    def command_summary(self, bot, cmd, *args):
+        help = ''
+        for command_type in CommandType:
+            spec = command_type.value
+            if not spec.listed:
+                continue
+            usage = spec.usage.replace('$cmd', '/' + spec.short)
+            description = f'{usage}: {spec.description}\n'
+            help += description
+        bot.sender.sendMessage(help)
+
 class ShoppingListModule():
 
     def __init__(self):

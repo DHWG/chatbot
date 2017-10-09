@@ -1,4 +1,5 @@
 import logging
+import random
 from commands import CommandType, Command
 
 class HelpModule:
@@ -77,3 +78,27 @@ class ChatToMirrorModule:
     def privacy_mode_off(self, *args):
         self._log.info('Privacy mode off.')
         self._privacy_mode = False
+
+
+class CurseModule:
+    '''Curses for that bot!'''
+
+    def __init__(self):
+        self._list = []
+        self._random = random.SystemRandom()
+        self._log = logging.getLogger(ShoppingListModule.__name__)
+
+    def add(self, bot, cmd, *items):
+        self._log.debug('Adding: %s', items)
+        # TODO connect to Redis
+        self._list.extend(items)
+
+    def remove(self, bot, cmd, *items):
+        # TODO connect to Redis
+        self._log.debug('Removing: %s', items)
+        for item in items:
+            # TODO connect to Redis
+            self._list.remove(item)
+
+    def curse(self, bot, *args):
+        bot.sender.sendMessage(self._random.choice(self._list))

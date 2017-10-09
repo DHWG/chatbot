@@ -40,6 +40,21 @@ class CommandType(Enum):
                                          'Turns off privacy mode.',
                                          '$cmd',
                                          True)
+    CURSE_ADD = CommandSpec('curses/add',
+                            'curseadd',
+                            'Adds a curse to the curse list.',
+                            '$cmd ZEFIX!',
+                            True)
+    CURSE_REMOVE = CommandSpec('curses/remove',
+                               'curseremove',
+                               'Removes a curse from the curse list.',
+                               '$cmd ZEFIX!',
+                               True)
+    CURSE_DO = CommandSpec('curses/do',
+                           'curse',
+                           'Removes a curse from the curse list.',
+                           '$cmd',
+                           True)
 
     def create(self, *arguments):
         return Command(self, arguments)

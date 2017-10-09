@@ -8,11 +8,12 @@ from telepot.delegate import (
     per_chat_id, create_open, pave_event_space, include_callback_query_chat_id)
 import config
 from commands import CommandType, Command
-from modules import HelpModule, ShoppingListModule, ChatToMirrorModule
+from modules import HelpModule, ShoppingListModule, ChatToMirrorModule, CurseModule
 
 help_module = HelpModule()
 shopping_list = ShoppingListModule()
 mirror_chat = ChatToMirrorModule()
+curse_module = CurseModule()
 
 # command handlers receive the specific type of commands they are registered for
 command_handlers = {
@@ -23,6 +24,9 @@ command_handlers = {
     CommandType.SHOPPING_LIST_DONE: shopping_list.done_selector,
     CommandType.MIRRORCHAT_PRIVACY_ON: mirror_chat.privacy_mode_on,
     CommandType.MIRRORCHAT_PRIVACY_OFF: mirror_chat.privacy_mode_off,
+    CommandType.CURSE_ADD: curse_module.add,
+    CommandType.CURSE_REMOVE: curse_module.remove,
+    CommandType.CURSE_DO: curse_module.curse
 }
 
 # message handlers are passed all messages that are not commands

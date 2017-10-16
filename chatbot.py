@@ -30,7 +30,8 @@ class ChatBot(telepot.helper.ChatHandler):
         self.redis = redis.StrictRedis(host='localhost')
         self.redis_key = 'shopping_list'
         self.secure_random = random.SystemRandom()
-        self.l_controller = lightcontroller.lightcontroller()
+
+        self.l_controller = lightcontroller.lightcontroller.instance()
 
     def on_chat_message(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
@@ -40,6 +41,7 @@ class ChatBot(telepot.helper.ChatHandler):
                 self.l_controller.notify()
                 if not ChatBot.hashmimode:
                     self._message_to_redis(content_type, msg)
+
         if content_type == 'sticker':
             fileid = msg['sticker']['file_id']
         if msg['text'] == '/test':
@@ -54,10 +56,12 @@ class ChatBot(telepot.helper.ChatHandler):
             subprocess.call('for i in {1 .. 10}; do ./reconnect.sh; sleep 10; done', shell=True)
         elif msg['text'].split()[0] == '/add':
             self._add_shopping(msg)
+            self.l_controller.notify()
         elif msg['text'] == '/list':
             self._show_shopping(msg)
         elif msg['text'] == '/done':
             self._done_shopping(msg)
+            self.l_controller.notify()
         elif msg['text'].split()[0] == '/curseadd':
             self._curseadd(msg)
         elif msg['text'].split()[0] == '/curseremove':
@@ -74,7 +78,12 @@ class ChatBot(telepot.helper.ChatHandler):
         elif msg['text'].split()[0] == '/addhashmi':
             self._addhashmi(msg)
         elif msg['text'] == "/notify":
-            self.l_controller.notify()
+            status = self.l_controller.notify()
+            print(status)
+        elif msg['text'].split()[0] == '/b':
+            self.l_controller.bright(msg['text'].split()[1])
+        elif msg['text'] == "/toggle":
+            self.l_controller.toggle_bulb()
 
     def on_callback_query(self, msg):
         query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
@@ -93,6 +102,8 @@ class ChatBot(telepot.helper.ChatHandler):
 
     def on_close(self, ex):
         # self.sender.sendMessage('on_close called')
+        self.l_controller.RUNNING = False
+
         pass
 
     def on__idle(self, event):

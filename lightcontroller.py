@@ -11,11 +11,18 @@ from time import sleep
 import sys
 
 class lightcontroller():
+
+    @classmethod
+    def instance(cls):
+        if '_instance' not in cls.__dict__:
+            cls._instance = cls()
+        return cls._instance
+
     def __init__(self):
+        self.RUNNING = True
         self.detected_bulbs = {}
         self.bulb_idx2ip = {}
         self.DEBUGGING = False
-        self.RUNNING = True
         self.current_command_id = 0
         self.MCAST_GRP = '239.255.255.250'
         self.scan_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -28,6 +35,7 @@ class lightcontroller():
         self.m_detection_thread = Thread(target=self.bulbs_detection_loop)
         self.m_detection_thread.start()
         sleep(1)
+
 
     def next_cmd_id(self):
         self.current_command_id += 1
@@ -48,7 +56,7 @@ class lightcontroller():
 
     def bulbs_detection_loop(self):
 
-        search_interval = 30000
+        search_interval = 2000
         read_interval = 100
         time_elapsed = 0
 
@@ -153,7 +161,7 @@ class lightcontroller():
         Input data 'params' must be a compiled into one string.
         E.g. params="1"; params="\"smooth\"", params="1,\"smooth\",80"
         '''
-        if not self.bulb_idx2ip.has_key(self,idx):
+        if not self.bulb_idx2ip.has_key(idx):
             print "error: invalid bulb idx"
             return
 
@@ -171,13 +179,14 @@ class lightcontroller():
             print "Unexpected error:", e
 
 
-
-    def toggle_bulb(self, idx):
-        self.operate_on_bulb(idx, "toggle", "")
-
+    def toggle_bulb(self):
+        self.operate_on_bulb(1, "toggle", "")
 
     def set_bright(self,idx, bright):
         self.operate_on_bulb(idx, "set_bright", str(bright))
+
+    def bright(self, bright):
+        self.set_bright(1, str(bright))
 
 
     def print_cli_usage(self):
@@ -190,10 +199,19 @@ class lightcontroller():
         print "  l|list: lsit all managed bulbs"
 
 
+    def get_status(self):
+        bulb_ip = self.bulb_idx2ip[1]
+        power = self.detected_bulbs[bulb_ip][2]
+        #print(power)
+        print(self.detected_bulbs[bulb_ip])
+        return power
 
 
 
     def notify(self):
+        status = self.get_status()
+        if status == "off":
+            self.toggle_bulb()
         idx = 1
         method = "set_bright"
         params = [25, 100]
@@ -223,6 +241,11 @@ class lightcontroller():
             tcp_socket.close()
         except Exception as e:
             print "Unexpected error:", e
+
+        if status != self.get_status():
+            self.toggle_bulb()
+
+        return status
 
 
 

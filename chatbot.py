@@ -16,6 +16,8 @@ import redis
 import json
 import re
 
+import lightcontroller
+
 message_with_inline_keyboard = None
 
 hashmimode = False
@@ -28,12 +30,14 @@ class ChatBot(telepot.helper.ChatHandler):
         self.redis = redis.StrictRedis(host='localhost')
         self.redis_key = 'shopping_list'
         self.secure_random = random.SystemRandom()
+        self.l_controller = lightcontroller.lightcontroller()
 
     def on_chat_message(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
         print(msg)
         if msg['chat']['type'] == 'group':
             if msg['chat']['id'] == -160834945:
+                self.l_controller.notify()
                 if not ChatBot.hashmimode:
                     self._message_to_redis(content_type, msg)
         if content_type == 'sticker':
@@ -60,6 +64,7 @@ class ChatBot(telepot.helper.ChatHandler):
             self._curseremove(msg)
         elif msg['text'] == '/hashmimode':
             ChatBot.hashmimode = True
+            self.l_controller.notify()
             thread.start_new_thread(self._hashmifunc, ())
         elif msg['text'] == '/normalmode':
             ChatBot.hashmimode = False
@@ -68,6 +73,8 @@ class ChatBot(telepot.helper.ChatHandler):
             self.sender.sendMessage('normalmode enabled')
         elif msg['text'].split()[0] == '/addhashmi':
             self._addhashmi(msg)
+        elif msg['text'] == "/notify":
+            self.l_controller.notify()
 
     def on_callback_query(self, msg):
         query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
@@ -199,14 +206,6 @@ bot = telepot.DelegatorBot(TOKEN, [
 MessageLoop(bot).run_as_thread()
 print('Listening ...')
 
-def send_to_chat(msg):
-  bot.sendMessage(-160834945, msg['data'])
-
-r2 = redis.StrictRedis(host='localhost')
-pubsub = r2.pubsub()
-pubsub.subscribe(**{'chat-broadcast': send_to_chat})
-
 while 1:
-    pubsub.get_message()
-    time.sleep(1)
+    time.sleep(10)
 

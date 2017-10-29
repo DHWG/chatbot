@@ -22,13 +22,12 @@ message_with_inline_keyboard = None
 
 hashmimode = False
 
-
-
 class ChatBot(telepot.helper.ChatHandler):
     def __init__(self, *args, **kwargs):
         super(ChatBot, self).__init__(*args, **kwargs)
         self.redis = redis.StrictRedis(host='localhost')
-        self.redis_key = 'shopping_list'
+        self.redis_shopping_list_key = 'shopping_list'
+        self.redis_screen_switch_key = 'screen_switch'
         self.secure_random = random.SystemRandom()
 
         self.l_controller = lightcontroller.lightcontroller.instance()
@@ -38,10 +37,10 @@ class ChatBot(telepot.helper.ChatHandler):
         print(msg)
         if msg['chat']['type'] == 'group':
             if msg['chat']['id'] == -160834945:
-                self.l_controller.notify()
-                if not ChatBot.hashmimode:
-                    self._message_to_redis(content_type, msg)
-
+                if msg['text'].split()[0] != '/b' and msg['text'] != "/toggle":
+                    self.l_controller.notify()
+                    if not ChatBot.hashmimode:
+                        self._message_to_redis(content_type, msg)
         if content_type == 'sticker':
             fileid = msg['sticker']['file_id']
         if msg['text'] == '/test':
@@ -84,16 +83,18 @@ class ChatBot(telepot.helper.ChatHandler):
             self.l_controller.bright(msg['text'].split()[1])
         elif msg['text'] == "/toggle":
             self.l_controller.toggle_bulb()
+        elif msg['text'] == "/switch":
+            self._switch_screen()
 
     def on_callback_query(self, msg):
         query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
         chat_id = msg['message']['chat']['id']
         # without following line encoding problems will stop us from finding non-ascii items
         # TODO extract Redis code in its own class, do this everywhere, sort items
-        items = map(lambda x: x.decode('utf8'), self.redis.smembers(self.redis_key))
+        items = map(lambda x: x.decode('utf8'), self.redis.smembers(self.redis_shopping_list_key))
         if query_data in items:
             buyer = msg['from']['first_name']
-            self.redis.srem(self.redis_key, query_data)
+            self.redis.srem(self.redis_shopping_list_key, query_data)
             self.sender.sendMessage('Thanks ' + buyer + ', for buying: ' + query_data)
             self.bot.answerCallbackQuery(query_id, text='Thanks')
 
@@ -129,16 +130,16 @@ class ChatBot(telepot.helper.ChatHandler):
         self.sender.sendMessage('add to Shopping List: ' + ', '.join(items))
         for item in items:
             if len(item) > 0:
-                self.redis.sadd(self.redis_key, item)
+                self.redis.sadd(self.redis_shopping_list_key, item)
 
     def _show_shopping(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
-        items = self.redis.smembers(self.redis_key)
+        items = self.redis.smembers(self.redis_shopping_list_key)
         self.sender.sendMessage('In Shopping List: ' + ', '.join(items))
 
     def _done_shopping(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
-        items = self.redis.smembers(self.redis_key)
+        items = self.redis.smembers(self.redis_shopping_list_key)
 
         if len(items) > 0:
             keyboard = self._build_keyboard(items)
@@ -166,6 +167,9 @@ class ChatBot(telepot.helper.ChatHandler):
             'name': initials(msg['from'].get('first_name', ' '), msg['from'].get('last_name', ' '))
         }
         self.redis.publish('chat', json.dumps(payload))
+
+    def _switch_screen(self):
+        self.redis.lpush(self.redis_screen_switch_key, "switch")
 
     def _addhashmi(self, msg):
         textarray = msg['text'].split(' ')
